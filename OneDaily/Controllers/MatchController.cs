@@ -167,6 +167,19 @@ namespace OneDaily.Controllers
                     return CreatedAtAction(nameof(GetMatches), new { id = match.MatchId }, match);
                 }
         */
+
+        // api/Match/HasAcceptedMatch/{username}
+        [HttpGet("HasAcceptedMatch/{username}")]
+        public async Task<ActionResult<bool>> HasAcceptedMatch(string username)
+        {
+            long userId = GetUserIdFromUsername(username);
+
+            bool hasAcceptedMatch = await _context.Matches
+                .AnyAsync(m => (m.User1Id == userId || m.User2Id == userId) && m.MatchStatus == "Matched");
+
+            return Ok(hasAcceptedMatch);
+        }
+
         // api/Match/DeclineMatch/{matchId}
         [HttpDelete("DeclineMatch/{matchId}")]
         public async Task<IActionResult> DeclineMatch(long matchId)
