@@ -28,6 +28,12 @@ namespace OneDaily.Controllers
         public string User2Username { get; set; }
     }
 
+    public class MinimalMatch
+    {
+        public long MatchId { get; set; }
+        public String User1Username { get; set; }
+        public String User2Username { get; set; }
+    }
 
 
     [Route("api/[controller]")]
@@ -46,11 +52,20 @@ namespace OneDaily.Controllers
             return _context.Matches.Any(e => e.MatchId == id);
         }
 
+        // handle all of the userId and username crossover
         private long GetUserIdFromUsername(string username)
         {
-            var user = _context.Users.FirstOrDefault(u => u.Username == username);
+            User user = _context.Users.FirstOrDefault(u => u.Username == username);
             return user.UserId;
         }
+        private string GetUsernameFromUserId(long userId)
+        {
+            User user = _context.Users.FirstOrDefault(u => u.UserId == userId);
+            return user != null ? user.Username : null;
+        }
+
+
+
 
         // gets a list of "PotentialMatch" objects based on number of shared interests and returns it 
         [HttpGet("sharedinterests")]
@@ -58,14 +73,15 @@ namespace OneDaily.Controllers
         {
             long userId = GetUserIdFromUsername(username);
 
-            var userInterests = await _context.UserInterests.Where(ui => ui.UserId == userId).Select(ui => ui.InterestId).ToListAsync();
+            // gets all the user interests by id, which is stored as a long
+            List<long> userInterests = await _context.UserInterests.Where(ui => ui.UserId == userId).Select(ui => ui.InterestId).ToListAsync();
 
             if (!userInterests.Any())
             {
                 return NotFound("No interests found for the user.");
             }
 
-            var potentialMatches = await _context.UserInterests
+            List<PotentialMatch> potentialMatches = await _context.UserInterests
                 .Where(ui => ui.UserId != userId && userInterests.Contains(ui.InterestId))
                 .GroupBy(ui => new { ui.UserId, ui.User.Username })
                 .Select(g => new PotentialMatch { UserId = g.Key.UserId, Username = g.Key.Username, SharedInterests = g.Count() })
@@ -81,15 +97,16 @@ namespace OneDaily.Controllers
             return Ok(potentialMatches);
         }
 
-        //IMPLEMENT LATER, THIS WILL ADD PENDING MATCH FUNCTIONALITY
-        // api/Match/PendingMatches/{username}
+        // this will get a passed in username and return all of the matches associated with that username where
+        // the user is allowed to accept the match, will not get those where they instantiated the match because
+        // the user should't accept their own match that they created
         [HttpGet("PendingMatches/{username}")]
-        public async Task<ActionResult<IEnumerable<Match>>> PendingMatches(string username)
+        public async Task<ActionResult<IEnumerable<MinimalMatch>>> PendingMatches(string username)
         {
             long userId = GetUserIdFromUsername(username);
 
-            var pendingMatches = await _context.Matches
-                .Where(m => (m.User1Id == userId || m.User2Id == userId) && m.MatchStatus == "Pending")
+            List<Match> pendingMatches = await _context.Matches
+                .Where(m => m.User2Id == userId && m.MatchStatus == "Pending")
                 .ToListAsync();
 
             if (!pendingMatches.Any())
@@ -97,37 +114,10 @@ namespace OneDaily.Controllers
                 return NotFound("No pending matches found.");
             }
 
-            List<Match> uniqueMatches = new List<Match>();
-            HashSet<long> matchIds = new HashSet<long>();
+            List<MinimalMatch> minimalMatches = pendingMatches.Select(m => new MinimalMatch { MatchId = m.MatchId, User1Username = GetUsernameFromUserId(m.User1Id.Value), User2Username = GetUsernameFromUserId(m.User2Id.Value) }).ToList();
 
-            foreach (var match in pendingMatches)
-            {
-                if (!matchIds.Contains(match.MatchId))
-                {
-                    uniqueMatches.Add(match);
-                    matchIds.Add(match.MatchId);
-                }
-            }
-
-            var options = new JsonSerializerOptions
-            {
-                ReferenceHandler = ReferenceHandler.Preserve
-            };
-
-            string json = JsonSerializer.Serialize(uniqueMatches, options);
-
-            return Content(json, "application/json");
+            return Ok(minimalMatches);
         }
-
-
-
-        // api/Match
-        [HttpGet]
-        public async Task<ActionResult<IEnumerable<Match>>> GetMatches()
-        {
-            return await _context.Matches.ToListAsync();
-        }
-
 
         // api/Match
         // post with both usernames and updates the status of the matches
@@ -146,7 +136,7 @@ namespace OneDaily.Controllers
             long user1Id = user1.UserId;
             long user2Id = user2.UserId;
 
-            var match = new Match
+            Match match = new Match
             {
                 User1Id = user1Id,
                 User2Id = user2Id,
@@ -181,7 +171,7 @@ namespace OneDaily.Controllers
         [HttpDelete("DeclineMatch/{matchId}")]
         public async Task<IActionResult> DeclineMatch(long matchId)
         {
-            var toDelete = await _context.Matches.FindAsync(matchId);
+            Match toDelete = await _context.Matches.FindAsync(matchId);
             if (toDelete == null)
             {
                 return NotFound("match could not be found");
