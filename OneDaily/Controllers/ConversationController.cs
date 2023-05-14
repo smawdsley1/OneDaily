@@ -9,19 +9,21 @@ namespace OneDaily.Controllers
     [Route("api/[controller]")]
     public class ConversationController : ControllerBase
     {
-        private OneDailyContext _context;
+        private readonly OneDailyContext _context;
 
         public ConversationController(OneDailyContext context)
         {
             _context = context;
         }
 
+
+
         [HttpPost("{matchId}")]
         public ActionResult<Conversation> CreateConversation(long matchId)
         {
             var newConversation = new Conversation
             {
-                MatchId = matchId,
+                MatchId = (int)matchId,
                 StartTime = DateTime.UtcNow
             };
 

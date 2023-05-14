@@ -194,6 +194,31 @@ namespace OneDaily.Controllers
             return Ok("match declined and deleted");
         }
 
+        // api/Match/DeclineMatchByUsername/{username}
+        [HttpDelete("DeleteMatch/{username}")]
+        public async Task<IActionResult> DeleteMatch(string username)
+        {
+            // gotta get the user obj to have access to the id which the match obj stores 
+            User? user = await _context.Users.FirstOrDefaultAsync(u => u.Username == username);
+
+            if (user == null)
+            {
+                return NotFound("User not found.");
+            }
+
+            var match = await _context.Matches.FirstOrDefaultAsync(m => m.User1Id == user.UserId || m.User2Id == user.UserId);
+
+            if (match == null)
+            {
+                return NotFound("Match not found for the user.");
+            }
+
+            _context.Matches.Remove(match);
+            await _context.SaveChangesAsync();
+
+            return Ok("Match deleted.");
+        }
+
         // api/Match/AcceptMatch/{matchId}/{username}
         [HttpPut("AcceptMatch/{matchId}/{username}")]
         public async Task<IActionResult> AcceptMatch(long matchId, string username)
@@ -207,9 +232,9 @@ namespace OneDaily.Controllers
             }
 
             // note that since user1 is the one to send the request only user2 need put a request to accept
-            if (match.User2Id == userId) 
+            if (match.User2Id == userId)
             {
-                match.User2Status = 1; 
+                match.User2Status = 1;
                 match.MatchStatus = "Matched";
 
                 // need all possible coorelations so that both matches a user started or is a part of is deleted
@@ -242,11 +267,24 @@ namespace OneDaily.Controllers
                     throw;
                 }
             }
+            CreateConversation(match.MatchId);
+
             Console.WriteLine("Successful upload to db");
             return NoContent();
         }
 
+        private void CreateConversation(long matchId)
+        {
+            var newConversation = new Conversation
+            {
+                MatchId = matchId,
+                StartTime = DateTime.UtcNow
+            };
+
+            _context.Conversations.Add(newConversation);
+             _context.SaveChangesAsync();
+
+            return;
+        }
     }
-
 }
-
