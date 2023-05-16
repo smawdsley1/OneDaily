@@ -50,7 +50,7 @@ namespace OneDaily.Context
                 entity.HasOne(d => d.Match)
                     .WithMany(p => p.Conversations)
                     .HasForeignKey(d => d.MatchId)
-                    .OnDelete(DeleteBehavior.ClientSetNull)
+                    .OnDelete(DeleteBehavior.SetNull)
                     .HasConstraintName("FK__Conversat__match__47DBAE45");
             });
 

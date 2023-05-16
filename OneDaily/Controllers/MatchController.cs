@@ -64,12 +64,9 @@ namespace OneDaily.Controllers
             return user != null ? user.Username : null;
         }
 
-
-
-
         // gets a list of "PotentialMatch" objects based on number of shared interests and returns it 
         [HttpGet("sharedinterests")]
-        public async Task<IActionResult> GetMatchBySharedInterests([FromQuery] string username)
+        public async Task<IActionResult> GetMatchBySharedInterests([FromQuery] String username)
         {
             long userId = GetUserIdFromUsername(username);
 
@@ -119,14 +116,11 @@ namespace OneDaily.Controllers
             return Ok(minimalMatches);
         }
 
-        // api/Match
-        // post with both usernames and updates the status of the matches
         [HttpPost]
         public async Task<ActionResult<Match>> PostMatch(MatchRequest matchRequest)
         {
             User? user1 = await _context.Users.FirstOrDefaultAsync(u => u.Username == matchRequest.User1Username);
             User? user2 = await _context.Users.FirstOrDefaultAsync(u => u.Username == matchRequest.User2Username);
-
 
             if (user1 == null || user2 == null)
             {
@@ -135,6 +129,14 @@ namespace OneDaily.Controllers
 
             long user1Id = user1.UserId;
             long user2Id = user2.UserId;
+
+            // Check if the match already exists
+            bool matchExists = await _context.Matches.AnyAsync(m => m.User1Id == user1Id && m.User2Id == user2Id);
+
+            if (matchExists)
+            {
+                return Conflict("A match with the same users already exists.");
+            }
 
             Match match = new Match
             {
@@ -146,10 +148,11 @@ namespace OneDaily.Controllers
             };
 
             _context.Matches.Add(match);
-            _context.SaveChanges();
-            return Ok(match);
+            await _context.SaveChangesAsync();
 
+            return Ok(match);
         }
+
 
         /*
                 // api/Match
@@ -167,6 +170,22 @@ namespace OneDaily.Controllers
                     return CreatedAtAction(nameof(GetMatches), new { id = match.MatchId }, match);
                 }
         */
+
+        // api/Match/GetMatchId/{username}
+        [HttpGet("GetMatchId/{username}")]
+        public async Task<ActionResult<long>> GetMatchIdByUsername(string username)
+        {
+            long userId = GetUserIdFromUsername(username);
+
+            var match = await _context.Matches.FirstOrDefaultAsync(m => m.User1Id == userId || m.User2Id == userId);
+
+            if (match == null)
+            {
+                return NotFound("No match id found");
+            }
+
+            return Ok(match.MatchId);
+        }
 
         // api/Match/HasAcceptedMatch/{username}
         [HttpGet("HasAcceptedMatch/{username}")]

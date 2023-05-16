@@ -36,6 +36,18 @@ namespace OneDaily.Controllers
             return user;
         }
 
+        [HttpGet("getUserIdByUsername/{username}")]
+        public async Task<ActionResult<long>> GetUserIdByUsername(string username)
+        {
+            var user = await _context.Users.FirstOrDefaultAsync(u => u.Username == username);
+            if (user == null)
+            {
+                return NotFound();
+            }
+            return user.UserId;
+        }
+
+
         // another get method to get user by username with only pertinet data, doesn't send extra stuff, don't necessarily need this
         // just thought it would also be interesting, also doesn't send sensitive data like password, login data, etc.
 

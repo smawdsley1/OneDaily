@@ -7,7 +7,7 @@ public partial class Conversation
 {
     public long ConversationId { get; set; }
 
-    public long MatchId { get; set; }
+    public long? MatchId { get; set; }
 
     public DateTime? StartTime { get; set; }
 
