@@ -57,13 +57,6 @@ app.UseEndpoints(endpoints =>
     endpoints.MapControllers();
 });
 
-app.MapControllerRoute(
-    name: "testPost",
-    pattern: "testpost",
-    defaults: new { controller = "TestPost", action = "Index" });
 
-app.MapControllerRoute(
-    name: "default",
-    pattern: "{controller=Login}/{action=Login}/{id?}");
 
 app.Run();

@@ -56,18 +56,6 @@ namespace OneDaily.Controllers
 
 
 
-        // GET: api/Message
-        [HttpGet]
-        public async Task<ActionResult<IEnumerable<Message>>> GetMessages()
-        {
-          if (_context.Messages == null)
-          {
-              return NotFound();
-          }
-            return await _context.Messages.ToListAsync();
-        }
-
-
         // GET: api/Message/GetByUsername
         [HttpGet("GetByUsername/{username}")]
         public ActionResult<List<ClientMessage>> GetAllMessagesByUsername(string username)
@@ -106,27 +94,30 @@ namespace OneDaily.Controllers
             return messages;
         }
 
-
-
-
-        // GET: api/Message/5
-        [HttpGet("{id}")]
-        public async Task<ActionResult<Message>> GetMessage(long id)
+        [HttpGet("GetConversationId/{username}")]
+        public ActionResult<long> GetConversationIdByUsername(String username)
         {
-          if (_context.Messages == null)
-          {
-              return NotFound();
-          }
-            var message = await _context.Messages.FindAsync(id);
-
-            if (message == null)
+            var user = _context.Users.FirstOrDefault(u => u.Username == username);
+            if (user == null)
             {
                 return NotFound();
             }
 
-            return message;
-        }
+            var match = _context.Matches.FirstOrDefault(m => (m.User1Id == user.UserId || m.User2Id == user.UserId) && m.MatchStatus == "Matched");
+            if (match == null)
+            {
+                return NotFound();
+            }
 
+            var conversation = _context.Conversations.FirstOrDefault(c => c.MatchId == match.MatchId);
+            if (conversation == null)
+            {
+                return NotFound();
+            }
+
+            var conversationId = conversation.ConversationId;
+            return conversationId;
+        }
 
         // POST: api/Message
         [HttpPost]
